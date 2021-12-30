@@ -1,0 +1,143 @@
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <errno.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <netdb.h>
+#include <string.h>
+
+#define SIZE 300
+extern int errno;
+int port;
+char loginMessage[] = "You have to be logged first!\nType \"exit\" to leave the app or enter your username: ";
+char userNotFound[] = "Couldn't find you in our database. Try again.\nYour username: ";
+char succesLogin[] = "You're succesfully logged in!\n";
+
+int main(int argc, char *argv[])
+{
+    int sd;
+    struct sockaddr_in server;
+    if (argc != 3)
+    {
+        printf("Sintaxa: %s <adresa_server> <port>\n", argv[0]);
+        return -1;
+    }
+    port = atoi(argv[2]);
+    if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        perror("Eroare la socket().\n");
+        return errno;
+    }
+
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = inet_addr(argv[1]);
+    server.sin_port = htons(port);
+    if (connect(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
+    {
+        perror("[client]Eroare la connect().\n");
+        return errno;
+    }
+
+    char message[SIZE] = "";
+    char response[SIZE] = "";
+    int length;
+    while (1)
+    {
+        bzero(message, SIZE);
+        if (read(sd, &length, sizeof(int)) < 0)
+        {
+            perror("[client]Eroare la read() de la server.\n");
+            return errno;
+        }
+        if (read(sd, &message, sizeof(int) * length) < 0)
+        {
+            perror("[client]Eroare la read() de la server.\n");
+            return errno;
+        }
+
+        printf("%s\n", message);
+        if (strcmp(message, succesLogin) == 0)
+        {
+            break;
+        }
+
+        bzero(response, SIZE);
+        read(0, response, 100);
+        response[strcspn(response, "\n")] = '\0';
+        length = strlen(response);
+        if (write(sd, &length, sizeof(int)) <= 0)
+        {
+            perror("[client]Eroare la write() spre server.\n");
+            return errno;
+        }
+        if (write(sd, &response, sizeof(int) * length) <= 0)
+        {
+            perror("[client]Eroare la write() spre server.\n");
+            return errno;
+        }
+        if (strcmp(response, "exit") == 0)
+        {
+            break;
+        }
+    }
+    //login reusit sau exit
+    if (strcmp(response, "exit") == 0)
+    {
+        printf("exit.\n");
+        close(sd);
+        return 0;
+    }
+    
+    while (1)
+    {
+        bzero(message, SIZE);
+        if (read(sd, &length, sizeof(int)) < 0)
+        {
+            perror("[client]Eroare la read() de la server.\n");
+            return errno;
+        }
+        if (read(sd, &message, sizeof(int) * length) < 0)
+        {
+            perror("[client]Eroare la read() de la server.\n");
+            return errno;
+        }
+        printf("\n%s", message);
+        fflush(stdout);
+        bzero(response, SIZE);
+        read(0, response, 100);
+        response[strcspn(response, "\n")] = '\0';
+        length = strlen(response);
+        if (write(sd, &length, sizeof(int)) <= 0)
+        {
+            perror("[client]Eroare la write() spre server.\n");
+            return errno;
+        }
+        if (write(sd, &response, sizeof(int) * length) <= 0)
+        {
+            perror("[client]Eroare la write() spre server.\n");
+            return errno;
+        }
+        if (strcmp(response, "7") == 0)
+        {
+            bzero(message, SIZE);
+            if (read(sd, &length, sizeof(int)) < 0)
+            {
+                perror("[client]Eroare la read() de la server.\n");
+                return errno;
+            }
+            if (read(sd, &message, sizeof(int) * length) < 0)
+            {
+                perror("[client]Eroare la read() de la server.\n");
+                return errno;
+            }
+            printf("%s\n",message);
+            fflush(stdout);
+            return 0;
+        }
+    }
+    close(sd);
+    return 0;
+}
