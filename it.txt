@@ -1,0 +1,10 @@
+laptop
+phone
+processor
+monitor
+mouse
+keyboard
+speakers
+hard disk
+cooler
+smartwatch

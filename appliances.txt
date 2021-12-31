@@ -1,0 +1,9 @@
+refrigerator
+dryer
+washing machine
+dishwasher
+microwave oven
+freezer
+blender
+gas cooker
+vacuum cleaner

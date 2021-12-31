@@ -9,12 +9,13 @@
 #include <netdb.h>
 #include <string.h>
 
-#define SIZE 300
+#define SIZE 500
 extern int errno;
 int port;
 char loginMessage[] = "You have to be logged first!\nType \"exit\" to leave the app or enter your username: ";
 char userNotFound[] = "Couldn't find you in our database. Try again.\nYour username: ";
-char succesLogin[] = "You're succesfully logged in!\n";
+char succesLogin[] = "You're succesfully logged in!";
+char categories[] = "Available categories:\nit\ngradina\ncasa\nelectrocasnice\n";
 
 int main(int argc, char *argv[])
 {
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
         }
 
         printf("%s\n", message);
+        fflush(stdout);
         if (strcmp(message, succesLogin) == 0)
         {
             break;
@@ -86,11 +88,11 @@ int main(int argc, char *argv[])
     //login reusit sau exit
     if (strcmp(response, "exit") == 0)
     {
-        printf("exit.\n");
+        printf("See you next time!\n");
+        fflush(stdout);
         close(sd);
         return 0;
     }
-    
     while (1)
     {
         bzero(message, SIZE);
@@ -99,6 +101,7 @@ int main(int argc, char *argv[])
             perror("[client]Eroare la read() de la server.\n");
             return errno;
         }
+
         if (read(sd, &message, sizeof(int) * length) < 0)
         {
             perror("[client]Eroare la read() de la server.\n");
@@ -120,7 +123,45 @@ int main(int argc, char *argv[])
             perror("[client]Eroare la write() spre server.\n");
             return errno;
         }
-        if (strcmp(response, "7") == 0)
+        if (strcmp(response, "1") == 0)
+        {
+            while (1) //intru in categorii
+            {
+                bzero(message, SIZE);
+                if (read(sd, &length, sizeof(int)) < 0)
+                {
+                    perror("[client]Eroare la read() de la server.\n");
+                    return errno;
+                }
+
+                if (read(sd, &message, sizeof(int) * length) < 0)
+                {
+                    perror("[client]Eroare la read() de la server.\n");
+                    return errno;
+                }
+                printf("%s", message);
+
+                fflush(stdout);
+                bzero(response, SIZE);
+                read(0, response, 100);
+                response[strcspn(response, "\n")] = '\0';
+                length = strlen(response);
+                if (write(sd, &length, sizeof(int)) <= 0)
+                {
+                    perror("[client]Eroare la write() spre server.\n");
+                    return errno;
+                }
+                if (write(sd, &response, sizeof(int) * length) <= 0)
+                {
+                    perror("[client]Eroare la write() spre server.\n");
+                    return errno;
+                }
+                if (strcmp(response, "6") == 0){
+                    break;
+                }
+            }
+        }
+        else if (strcmp(response, "7") == 0)
         {
             bzero(message, SIZE);
             if (read(sd, &length, sizeof(int)) < 0)
@@ -133,9 +174,13 @@ int main(int argc, char *argv[])
                 perror("[client]Eroare la read() de la server.\n");
                 return errno;
             }
-            printf("%s\n",message);
+            printf("%s\n", message);
             fflush(stdout);
             return 0;
+        }
+        else
+        {
+            continue;
         }
     }
     close(sd);

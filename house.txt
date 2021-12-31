@@ -1,0 +1,10 @@
+washbasin
+shower
+seat
+table
+office
+mattress
+bed
+towel
+linen
+sofa

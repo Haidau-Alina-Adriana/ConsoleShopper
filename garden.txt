@@ -1,0 +1,10 @@
+leaf blower
+tree
+earth
+hotchpotch
+hose
+row
+trimmer
+lawn mower
+plants
+flowers
