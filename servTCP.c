@@ -4,12 +4,13 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
 
 #define PORT 2020
-#define SIZE 500
+#define SIZE 1000
 extern int errno;
 char loginMessage[] = "You have to be logged first!\nType \"exit\" to leave the app or enter your username: ";
 char userNotFound[] = "Couldn't find you in our database. Try again.\nYour username: ";
@@ -18,61 +19,19 @@ char menu[] = "Options:\n[1]see categories\n[2]see cart\n[3]save cart\n[4]add it
 char succesLogout[] = "You're succesfully logged out!";
 char categories[] = "\nAvailable categories:\n[1]appliances\n[2]sport\n[3]house\n[4]garden\n[5]it\n[6]go back\nYour choice:";
 char cmdNotFound[] = "Command not available!Try again: \n";
-char categoryNotFound[] = "Category not found!";
+char categoryNotFound[] = "Category does not exists!\n";
 char productsFromCategory[300];
 char cart[300];
-char cartName[50];
+char path[50];
 int cartState = 1;
 char resultCommand[1000];
-FILE *fileCartName;
 
-void seeCart()
-{
-    int bufferLen = 255;
-    char buffer[bufferLen];
-    fileCartName = fopen(cartName, "r");
-    memset(cart, 0, 300);
-    strcat(cart, "You currently have in your cart: \n");
-    if (fileCartName == NULL)
-    {
-        perror("Error at opening the file for reading!");
-    }
-    while (fgets(buffer, bufferLen, fileCartName))
-    {
-        strcat(cart, buffer);
-    }
-    fclose(fileCartName);
-}
-void createCart(int customerNumber)
-{
-    char buffer[2];
-    char path[50];
-    memset(path, 0, 50);
-    strcpy(path, "cart");
-    buffer[0] = customerNumber + '0';
-    strcat(path, buffer);
-    strcat(path, ".txt");
-    fileCartName = fopen(path, "w");
-    if (fileCartName == NULL)
-    {
-        perror("Error at creating the file/writing in file!");
-    }
-    strcpy(cartName, path);
-    fclose(fileCartName);
-}
-void deleteCart()
-{
-    if (remove(cartName) != 0)
-    {
-        perror("The file could not be deleted!");
-    }
-}
 void saveCart(int option)
 {
     memset(resultCommand, 0, 1000);
     if (option == 1)
     {
-        strcpy(resultCommand, categories);
+        return;
     }
     else if (option == 2)
     {
@@ -91,50 +50,67 @@ void placeOrder()
     {
         if (strcmp(cart, "") == 0)
         {
-            strcpy(resultCommand, "Add some items to your cart!\n");
+            strcpy(resultCommand, "Add some items to your cart!\n\n");
         }
         else
         {
-            strcpy(resultCommand, "Your order has been registered!\n");
+            strcpy(resultCommand, "Your order has been registered!\n\n");
         }
     }
     else
     {
-        strcpy(resultCommand, "Please save your cart first to place the order!\n");
+        strcpy(resultCommand, "Please save your cart first to place the order!\n\n");
     }
 }
-
+int checkIfCategExists(char *category)
+{
+    memset(resultCommand, 0, 1000);
+    memset(path, 0, 50);
+    strcpy(path, category);
+    strcat(path, ".txt");
+    struct stat findFile;
+    if (stat(path, &findFile) == -1)
+    {
+        strcpy(resultCommand, categoryNotFound);
+        return -1;
+    }
+    return 1;
+}
 int addItem(char *item)
 {
-    fileCartName = fopen(cartName, "a");
-    if (fileCartName == NULL)
-    {
-        perror("Error at opening the file for appending!");
-    }
-    fputs(item, fileCartName);
-    fputs("\n", fileCartName);
-    fclose(fileCartName);
-}
-void removeItem(char *item)
-{
+    memset(resultCommand, 0, 1000);
+    FILE *filename;
     int bufferLen = 255;
     char buffer[bufferLen];
-    memset(buffer, 0, bufferLen);
-    fileCartName = fopen(cartName, "r");
-    if (fileCartName == NULL)
+    filename = fopen(path, "r");
+    if (filename == NULL)
     {
         perror("Error at opening the file for reading!");
     }
-    char cartContent[500] = "";
-    while (fgets(buffer, bufferLen, fileCartName))
+    while (fgets(buffer, bufferLen, filename))
     {
-        strcat(cartContent, buffer);
+        buffer[strcspn(buffer, "\n")] = '\0';
+        if (strcmp(buffer, item) == 0)
+        {
+            strcat(cart, item);
+            strcat(cart, "\n");
+            cartState = 0;
+            strcpy(resultCommand, "Item adeed to cart!\n");
+            fclose(filename);
+            return 1;
+        }
     }
-
+    strcpy(resultCommand, "This item does not exists in this category!Try again!\n");
+    fclose(filename);
+    return -1;
+}
+void removeItem(char *item)
+{
+    memset(resultCommand, 0, 1000);
     char result[500] = "";
     const char delim[2] = "\n";
     char *token;
-    token = strtok(cartContent, delim);
+    token = strtok(cart, delim);
     int ok = 0;
     while (token != NULL)
     {
@@ -148,12 +124,19 @@ void removeItem(char *item)
         strcat(result, "\n");
         token = strtok(NULL, delim);
     }
-    fileCartName = fopen(cartName, "w");
-    fputs(result, fileCartName);
-    fclose(fileCartName);
-    
+    if (ok == 0)
+    {
+        memset(cart, 0, 300);
+        strcpy(cart, result);
+        strcpy(resultCommand, "Couldn't find the item in cart!\n");
+    }
+    else
+    {
+        memset(cart, 0, 300);
+        strcpy(cart, result);
+        strcpy(resultCommand, "Item removed from cart!\n");
+    }
 }
-
 int findUser(char *word)
 {
     FILE *configFile;
@@ -305,13 +288,12 @@ int main()
 
             ////login reusit
             strcpy(message, menu);
-            createCart(id);
             while (1)
             {
                 length = strlen(message);
                 if (write(client, &length, sizeof(int)) <= 0)
                 {
-                    perror("Eroare la write() catre client.\n");
+                    perror("Eroarela write() catre client.\n");
                 }
                 if (write(client, &message, sizeof(int) * length) <= 0)
                 {
@@ -383,7 +365,8 @@ int main()
                         }
                         else
                         {
-                            strcpy(message, categoryNotFound);
+                            strcpy(message, "\n");
+                            strcat(message, categoryNotFound);
                         }
                         strcat(message, "\n");
                         strcat(message, categories);
@@ -391,7 +374,227 @@ int main()
                 }
                 else if (strcmp(response, "2") == 0)
                 {
-                    strcpy(message, cart);
+                    if (strcmp(cart, "") == 0)
+                    {
+                        strcpy(message, "Your cart is empty!\n\n");
+                    }
+                    else
+                    {
+                        strcpy(message, "You currently have in your cart: \n");
+                        strcat(message, cart);
+                        strcat(message, "\n");
+                    }
+                    strcat(message, menu);
+                }
+                else if (strcmp(response, "3") == 0)
+                {
+
+                    if (strcmp(cart, "") == 0)
+                    {
+                        strcpy(message, "Your cart is empty!\n\n");
+                    }
+
+                    strcat(message, "Do you want to add anything else to your cart?\n[1]Yes\n[2]No\nResponse: ");
+
+                    length = strlen(message);
+                    if (write(client, &length, sizeof(int)) <= 0)
+                    {
+                        perror("Eroare la write() catre client.\n");
+                    }
+                    if (write(client, &message, sizeof(int) * length) <= 0)
+                    {
+                        perror("Eroare la write() catre client.\n");
+                    }
+                    bzero(response, SIZE);
+                    bzero(message, SIZE);
+                    if (read(client, &length, sizeof(int)) <= 0)
+                    {
+                        perror("Eroare la read() de la client.\n");
+                    }
+                    if (read(client, &response, sizeof(int) * length) <= 0)
+                    {
+                        perror("Eroare la read() de la client.\n");
+                    }
+                    if (strstr(response, "1") || strstr(response, "2"))
+                    {
+                        int opt = atoi(response);
+                        saveCart(opt);
+                        strcpy(message, resultCommand);
+                        strcat(message, "\n");
+                        strcat(message, menu);
+                    }
+                    else
+                    {
+                        strcpy(message, "Not a valid option!\nTry again!\n");
+                        strcat(message, menu);
+                    }
+                }
+                else if (strcmp(response, "4") == 0)
+                {
+
+                    while (1)
+                    {
+                        strcat(message, "Choose the number of the category for your item: ");
+                        strcat(message, categories);
+                        length = strlen(message);
+                        if (write(client, &length, sizeof(int)) <= 0)
+                        {
+                            perror("Eroare la write() catre client.\n");
+                        }
+                        if (write(client, &message, sizeof(int) * length) <= 0)
+                        {
+                            perror("Eroare la write() catre client.\n");
+                        }
+                        bzero(response, SIZE);
+                        bzero(message, SIZE);
+                        if (read(client, &length, sizeof(int)) <= 0)
+                        {
+                            perror("Eroare la read() de la client.\n");
+                        }
+                        if (read(client, &response, sizeof(int) * length) <= 0)
+                        {
+                            perror("Eroare la read() de la client.\n");
+                        }
+                        if (strcmp(response, "1") == 0)
+                        {
+                            bzero(response, SIZE);
+                            strcpy(response, "appliances");
+                        }
+                        else if (strcmp(response, "2") == 0)
+                        {
+                            bzero(response, SIZE);
+                            strcpy(response, "sport");
+                        }
+                        else if (strcmp(response, "3") == 0)
+                        {
+                            bzero(response, SIZE);
+                            strcpy(response, "house");
+                        }
+                        else if (strcmp(response, "4") == 0)
+                        {
+                            bzero(response, SIZE);
+                            strcpy(response, "garden");
+                        }
+                        else if (strcmp(response, "5") == 0)
+                        {
+                            bzero(response, SIZE);
+                            strcpy(response, "it");
+                        }
+                        else if (strcmp(response, "6") == 0)
+                        {
+                            strcpy(message, menu);
+                            break;
+                        }
+                        else
+                        {
+                            strcpy(message, categoryNotFound);
+                        }
+
+                        if (checkIfCategExists(response) == -1)
+                        {
+                            strcpy(message, resultCommand);
+                            continue;
+                        }
+                        else
+                        {
+                            strcpy(message, "What item do you want to add to cart?: ");
+                            length = strlen(message);
+                            if (write(client, &length, sizeof(int)) <= 0)
+                            {
+                                perror("Eroare la write() catre client.\n");
+                            }
+                            if (write(client, &message, sizeof(int) * length) <= 0)
+                            {
+                                perror("Eroare la write() catre client.\n");
+                            }
+                            bzero(response, SIZE);
+                            bzero(message, SIZE);
+                            if (read(client, &length, sizeof(int)) <= 0)
+                            {
+                                perror("Eroare la read() de la client.\n");
+                            }
+                            if (read(client, &response, sizeof(int) * length) <= 0)
+                            {
+                                perror("Eroare la read() de la client.\n");
+                            }
+                            if (addItem(response) == 1)
+                            {
+                                strcpy(message, "Item adeed to cart!\n\n");
+                                strcat(message, menu);
+                                length = strlen(message);
+                                if (write(client, &length, sizeof(int)) <= 0)
+                                {
+                                    perror("Eroare la write() catre client.\n");
+                                }
+                                if (write(client, &message, sizeof(int) * length) <= 0)
+                                {
+                                    perror("Eroare la write() catre client.\n");
+                                }
+                                break;
+                            }
+                            else
+                            {
+                                strcpy(message, resultCommand);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                else if (strcmp(response, "5") == 0)
+                {
+                   
+                    if (strcmp(cart, "") == 0)
+                    {
+                        strcpy(message, "Empty cart!\n\n");
+                    }
+                    else
+                    {
+                        strcpy(message, "What item do you want to remove?: ");
+                    }
+
+                    length = strlen(message);
+                    if (write(client, &length, sizeof(int)) <= 0)
+                    {
+                        perror("Eroare la write() catre client.\n");
+                    }
+                    if (write(client, &message, sizeof(int) * length) <= 0)
+                    {
+                        perror("Eroare la write() catre client.\n");
+                    }
+
+                    if (strstr(message, "Empty cart!") == NULL)
+                    {
+                        bzero(response, SIZE);
+                        bzero(message, SIZE);
+                        if (read(client, &length, sizeof(int)) <= 0)
+                        {
+                            perror("Eroare la read() de la client.\n");
+                        }
+                        if (read(client, &response, sizeof(int) * length) <= 0)
+                        {
+                            perror("Eroare la read() de la client.\n");
+                        }
+                        removeItem(response);
+                        strcpy(message, resultCommand);
+                        strcat(message, "\n");
+                        length = strlen(message);
+                        if (write(client, &length, sizeof(int)) <= 0)
+                        {
+                            perror("Eroare la write() catre client.\n");
+                        }
+                        if (write(client, &message, sizeof(int) * length) <= 0)
+                        {
+                            perror("Eroare la write() catre client.\n");
+                        }
+                    }
+                    bzero(message, SIZE);
+                    strcat(message, menu);
+                }
+                else if (strcmp(response, "6") == 0)
+                {
+
+                    placeOrder();
+                    strcpy(message, resultCommand);
                     strcat(message, menu);
                 }
                 else if (strcmp(response, "7") == 0)
@@ -408,7 +611,7 @@ int main()
                     }
                     printf("Customer %d logged out!\n", id);
                     fflush(stdout);
-                    deleteCart();
+
                     return 0;
                 }
                 else
