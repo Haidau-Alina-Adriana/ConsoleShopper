@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
@@ -14,28 +15,33 @@
 extern int errno;
 char loginMessage[] = "You have to be logged first!\nType \"exit\" to leave the app or enter your username: ";
 char userNotFound[] = "Couldn't find you in our database. Try again.\nYour username: ";
-char succesLogin[] = "You're succesfully logged in!";
-char menu[] = "Options:\n[1]see categories\n[2]see cart\n[3]save cart\n[4]add item in cart\n[5]remove item from cart\n[6]place order\n[7]logout\nYour option: ";
+char succesLogin[] = "\nYou're succesfully logged in!";
+char menu[] = "Options:\n[1]see categories\n[2]see cart\n[3]save cart\n[4]add item in cart\n[5]remove item from cart\n[6]place order\n[7]cancel order\n[8]logout\nYour option: ";
 char succesLogout[] = "You're succesfully logged out!";
-char categories[] = "\nAvailable categories:\n[1]appliances\n[2]sport\n[3]house\n[4]garden\n[5]it\n[6]go back\nYour choice:";
+char categories[] = "\nAvailable categories:\n[1]appliances\n[2]sport\n[3]house\n[4]garden\n[5]technology\n[6]go back\nYour choice:";
 char cmdNotFound[] = "Command not available!Try again: \n";
-char categoryNotFound[] = "Category does not exists!\n";
+char categoryNotFound[] = "Category does not exists!";
 char productsFromCategory[300];
 char cart[300];
 char path[50];
+char currentUser[20];
+time_t p0;
+time_t p1;
+
 int cartState = 1;
+int placedOrder = 0;
 char resultCommand[1000];
 
 void saveCart(int option)
 {
     memset(resultCommand, 0, 1000);
-    if (option == 1)
+    if (option == 2)
     {
         return;
     }
-    else if (option == 2)
+    else if (option == 1)
     {
-        strcpy(resultCommand, "Cart saved!\n");
+        strcpy(resultCommand, "Cart saved!\n\n");
         cartState = 1;
     }
     else
@@ -43,23 +49,56 @@ void saveCart(int option)
         strcpy(resultCommand, "Option not available!\n");
     }
 }
-void placeOrder()
+void cancelOrder(int option)
 {
+    time(&p1);
+
     memset(resultCommand, 0, 1000);
-    if (cartState == 1)
+    if (option == 1)
     {
-        if (strcmp(cart, "") == 0)
+        if (p1 - p0 < 10)
         {
-            strcpy(resultCommand, "Add some items to your cart!\n\n");
+            placedOrder = 0;
+            strcpy(resultCommand, "Your order is cancelled!\n\n");
         }
         else
         {
-            strcpy(resultCommand, "Your order has been registered!\n\n");
+            strcpy(resultCommand, "You can't cancel the order!\n\n");
         }
     }
     else
     {
-        strcpy(resultCommand, "Please save your cart first to place the order!\n\n");
+        strcpy(resultCommand, "Your order is safe!\n\n");
+    }
+}
+void placeOrder()
+{
+    memset(resultCommand, 0, 1000);
+    if (placedOrder == 0)
+    {
+        if (cartState == 1)
+        {
+            if (strcmp(cart, "") == 0)
+            {
+                strcpy(resultCommand, "Add some items to your cart!\n\n");
+            }
+            else
+            {
+                strcpy(resultCommand, "Your order has been registered!\nYour order: \n");
+                strcat(resultCommand, cart);
+                strcat(resultCommand, "\n\n");
+                placedOrder = 1;
+                time(&p0);
+            }
+        }
+        else
+        {
+            strcpy(resultCommand, "Please save your cart first to place the order!\n\n");
+        }
+    }
+    else
+    {
+        strcpy(resultCommand, "Already placed!\n\n");
     }
 }
 int checkIfCategExists(char *category)
@@ -134,30 +173,61 @@ void removeItem(char *item)
     {
         memset(cart, 0, 300);
         strcpy(cart, result);
-        strcpy(resultCommand, "Item removed from cart!\n");
+        strcpy(resultCommand, "Item removed from cart!");
     }
 }
-int findUser(char *word)
+int findUser(char *username)
 {
     FILE *configFile;
     int bufferLen = 255;
     char buffer[bufferLen];
+    char rez[1000];
+    int retValue = -1;
     configFile = fopen("configFile.txt", "r");
     if (configFile == NULL)
     {
         perror("Error at opening the file for reading!");
     }
+    memset(rez, 0, 1000);
     while (fgets(buffer, bufferLen, configFile))
     {
-        buffer[strcspn(buffer, "\n")] = '\0';
-        if (strcmp(word, buffer) == 0)
+        char copyLine[100];
+        strcpy(copyLine, buffer);
+        char *token;
+        char delim[3] = "->";
+        token = strtok(copyLine, delim);
+        if (strcmp(token, username) == 0)
         {
-            fclose(configFile);
-            return 1;
+            if (strstr(buffer, "State:0") != 0)
+            {
+                strcat(rez, username);
+                strcat(rez, "->");
+                strcat(rez, "State:1\n");
+                retValue = 1;
+                strcpy(currentUser, username);
+            }
+            else
+            {
+                retValue = 2;
+                strcat(rez, buffer);
+            }
+        }
+        else
+        {
+            strcat(rez, buffer);
         }
     }
+    if (retValue == 1)
+    {
+        configFile = fopen("configFile.txt", "w");
+        if (configFile == NULL)
+        {
+            perror("Error at opening the file for reading!");
+        }
+        fputs(rez, configFile);
+    }
     fclose(configFile);
-    return -1;
+    return retValue;
 }
 int getProductsFromCategory(char *category)
 {
@@ -182,6 +252,52 @@ int getProductsFromCategory(char *category)
     fclose(filename);
 }
 
+void logout()
+{
+    FILE *configFile;
+    int bufferLen = 255;
+    char buffer[bufferLen];
+    char rez[1000];
+    configFile = fopen("configFile.txt", "r");
+    if (configFile == NULL)
+    {
+        perror("Error at opening the file for reading!");
+    }
+    memset(rez, 0, 1000);
+    while (fgets(buffer, bufferLen, configFile))
+    {
+        char copyLine[100];
+        strcpy(copyLine, buffer);
+        char *token;
+        char delim[3] = "->";
+        token = strtok(copyLine, delim);
+        if (strcmp(token, currentUser) == 0)
+        {
+            if (strstr(buffer, "State:1") != 0)
+            {
+                strcat(rez, currentUser);
+                strcat(rez, "->");
+                strcat(rez, "State:0\n");
+            }
+            else
+            {
+                strcat(rez, buffer);
+            }
+        }
+        else
+        {
+            strcat(rez, buffer);
+        }
+    }
+    configFile = fopen("configFile.txt", "w");
+    if (configFile == NULL)
+    {
+        perror("Error at opening the file for reading!");
+    }
+    fputs(rez, configFile);
+
+    fclose(configFile);
+}
 int main()
 {
     struct sockaddr_in server;
@@ -270,19 +386,24 @@ int main()
                 }
                 if (strcmp(response, "exit") == 0)
                 {
-                    printf("Customer %d logged out!\n", id);
+                    printf("Customer %d exited!\n", id);
                     fflush(stdout);
                     exit;
                 }
 
                 bzero(message, SIZE);
-                if (findUser(response) == 1)
+                int resultFindUser = findUser(response);
+                if (resultFindUser == -1)
+                {
+                    strcat(message, userNotFound);
+                }
+                else if (resultFindUser == 1)
                 {
                     strcat(message, succesLogin);
                 }
                 else
                 {
-                    strcat(message, userNotFound);
+                    strcat(message, "User already connected!Try a dfifferent one!\nYour username: ");
                 }
             }
 
@@ -360,7 +481,7 @@ int main()
                         }
                         else if (strcmp(response, "5") == 0)
                         {
-                            getProductsFromCategory("it");
+                            getProductsFromCategory("technology");
                             strcpy(message, productsFromCategory);
                         }
                         else
@@ -394,7 +515,7 @@ int main()
                         strcpy(message, "Your cart is empty!\n\n");
                     }
 
-                    strcat(message, "Do you want to add anything else to your cart?\n[1]Yes\n[2]No\nResponse: ");
+                    strcat(message, "Are you sure?\n[1]Yes\n[2]No\nResponse: ");
 
                     length = strlen(message);
                     if (write(client, &length, sizeof(int)) <= 0)
@@ -415,12 +536,11 @@ int main()
                     {
                         perror("Eroare la read() de la client.\n");
                     }
-                    if (strstr(response, "1") || strstr(response, "2"))
+                    if (strcmp(response, "1") == 0 || strcmp(response, "2") == 0)
                     {
                         int opt = atoi(response);
                         saveCart(opt);
                         strcpy(message, resultCommand);
-                        strcat(message, "\n");
                         strcat(message, menu);
                     }
                     else
@@ -478,7 +598,7 @@ int main()
                         else if (strcmp(response, "5") == 0)
                         {
                             bzero(response, SIZE);
-                            strcpy(response, "it");
+                            strcpy(response, "technology");
                         }
                         else if (strcmp(response, "6") == 0)
                         {
@@ -542,7 +662,7 @@ int main()
                 }
                 else if (strcmp(response, "5") == 0)
                 {
-                   
+
                     if (strcmp(cart, "") == 0)
                     {
                         strcpy(message, "Empty cart!\n\n");
@@ -599,6 +719,54 @@ int main()
                 }
                 else if (strcmp(response, "7") == 0)
                 {
+                    if (placedOrder == 0)
+                    {
+                        strcpy(message, "Place the order first!Type ok: ");
+                        //strcat(resultCommand,"\n\n");
+                    }
+                    else
+                    {
+                        strcpy(message, "Do you want to cancel your order?\n[1]Yes\n[2]No\nYour answer: ");
+                    }
+                    length = strlen(message);
+                    if (write(client, &length, sizeof(int)) <= 0)
+                    {
+                        perror("Eroare la write() catre client.\n");
+                    }
+                    if (write(client, &message, sizeof(int) * length) <= 0)
+                    {
+                        perror("Eroare la write() catre client.\n");
+                    }
+                    bzero(response, SIZE);
+                    bzero(message, SIZE);
+                    if (read(client, &length, sizeof(int)) <= 0)
+                    {
+                        perror("Eroare la read() de la client.\n");
+                    }
+                    if (read(client, &response, sizeof(int) * length) <= 0)
+                    {
+                        perror("Eroare la read() de la client.\n");
+                    }
+                    if (strcmp(response, "1") == 0 || strcmp(response, "2") == 0)
+                    {
+                        int opt = atoi(response);
+                        cancelOrder(opt);
+                        strcpy(message, resultCommand);
+                        strcat(message, menu);
+                    }
+                    else if (strcmp(response, "ok") == 0)
+                    {
+                        strcat(message, menu);
+                    }
+                    else
+                    {
+                        strcpy(message, "Not a valid option!\nTry again!\n");
+                        strcat(message, menu);
+                    }
+                }
+                else if (strcmp(response, "8") == 0)
+                {
+                    logout();
                     strcpy(message, succesLogout);
                     length = strlen(message);
                     if (write(client, &length, sizeof(int)) <= 0)
