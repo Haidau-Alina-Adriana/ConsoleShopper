@@ -6,5 +6,5 @@ mouse
 keyboard
 speakers
 hard disk
-cooler
 smartwatch
+cooler
