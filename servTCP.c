@@ -923,7 +923,6 @@ int main()
                     }
                     else if (strcmp(response, "6") == 0)
                     {
-
                         placeOrder();
                         strcpy(message, resultCommand);
                         strcat(message, menu);
@@ -1314,6 +1313,10 @@ int main()
                         printf("Client %d logged out!\n", id);
                         fflush(stdout);
                         return 0;
+                    }else
+                    {
+                        strcpy(message, cmdNotFound);
+                        strcat(message, adminMenu);
                     }
                 }
             }
