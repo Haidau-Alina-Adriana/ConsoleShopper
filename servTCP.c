@@ -178,7 +178,7 @@ void removeItem(char *item)
         strcpy(resultCommand, "Item removed from cart!");
     }
 }
-int findUser(char *username)
+int login(char *username)
 {
     FILE *configFile;
     int bufferLen = 255;
@@ -603,7 +603,7 @@ int main()
                     }
 
                     bzero(message, SIZE);
-                    int resultFindUser = findUser(response);
+                    int resultFindUser = login(response);
                     if (resultFindUser == -1)
                     {
                         strcat(message, userNotFound);
