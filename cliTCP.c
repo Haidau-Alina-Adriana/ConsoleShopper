@@ -17,7 +17,6 @@ char userNotFound[] = "Couldn't find you in our database. Try again.\nYour usern
 char succesLogin[] = "\nYou're succesfully logged in!";
 char succesAdmin[] = "\nYou're logged as admin!";
 char categoryNotFound[] = "Category does not exists!\n";
-int admin = 0;
 
 int main(int argc, char *argv[])
 {
@@ -81,11 +80,8 @@ int main(int argc, char *argv[])
         close(sd);
         return 0;
     }
-    if (strcmp(response, "admin") == 0)
-    {
-        admin = 1;
-    }
-    if (admin == 0)
+    response[strcspn(response, "\n")] = '\0';
+    if (strcmp(response, "admin")!= 0)
     {
         while (1)
         {

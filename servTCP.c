@@ -27,7 +27,6 @@ char productsFromCategory[300];
 char cart[300];
 char path[50];
 char currentUser[20];
-int admin = 0;
 time_t p0;
 time_t p1;
 int cartState = 1;
@@ -559,12 +558,9 @@ int main()
                 fflush(stdout);
                 exit;
             }
-            if (strcmp(response, "admin") == 0)
-            {
-                admin = 1;
-            }
             strcpy(message, loginMessage);
-            if (admin == 0)
+            response[strcspn(response, "\n")] = '\0';
+            if (strcmp(response, "admin")!= 0)
             {
 
                 while (1)
