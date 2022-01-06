@@ -1,7 +1,8 @@
 alina->State:0
 stefan->State:0
-cosmin->State:0
 ioana->State:0
-maria->State:0
 vlad->State:0
+cosmin->State:0
+maria->State:0
+raluca->State:0
 ioan->State:0

@@ -317,7 +317,7 @@ int removeUser(char *username)
         {
             perror("Error at opening the file for reading!");
         }
-        rez[strlen(rez)-1] = '\0';
+        rez[strlen(rez)] = '\0';
         fputs(rez, filename);
         strcpy(resultCommand, "User removed!\n");
     }
@@ -393,6 +393,7 @@ int removeItemFromOptions(char *item)
         {
             perror("Error at opening the file for reading!");
         }
+        rez[strlen(rez)-1] = '\0';
         fputs(rez, filename);
         strcpy(resultCommand, "Item removed!\n");
         fclose(filename);
