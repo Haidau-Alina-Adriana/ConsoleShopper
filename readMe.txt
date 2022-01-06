@@ -5,5 +5,5 @@ Pentru rularea celor 2 aplicatii: - in terminale diferite
 
 Clientul se poate loga ca si user sau ca si admin:
     -ca user: este necesar un username valid din fisierul configFile.txt
-             dupa logare userul poate sa vizualizeze categoriile, sa vada ce produse are in cos, sa isi salveze cosul, sa adauge/stearga un produs din cos, sa plaseze comanda sau sa o anuleze si sa faca logout
-    -ca admin: poate adauga/sterge produse din fisierele ce contin produsele si poate adauga/sterge un user
+             dupa logare userul poate sa vizualizeze categoriile, sa vada ce produse are in cos, sa isi salveze cosul, sa adauge/stearga un produs din cos, sa plaseze comanda sau sa o anuleze si sa faca logout reprezentativ prin numarul de dinaintea comenzii respective din meniu
+    -ca admin: poate adauga/sterge produse din fisierele ce contin produsele, poate adauga/sterge un user si comanda logout
